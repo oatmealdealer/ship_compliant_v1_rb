@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-RSpec.describe ShipCompliantV1Rb do
+RSpec.describe ShipCompliantV1 do
   it "has a version number" do
-    expect(ShipCompliantV1Rb::VERSION).not_to be nil
+    expect(ShipCompliantV1::VERSION).not_to be nil
   end
 
   it "does something useful" do

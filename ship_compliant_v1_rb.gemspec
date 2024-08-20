@@ -4,7 +4,7 @@ require_relative "lib/ship_compliant_v1_rb/version"
 
 Gem::Specification.new do |spec|
   spec.name = "ship_compliant_v1_rb"
-  spec.version = ShipCompliantV1Rb::VERSION
+  spec.version = ShipCompliantV1::VERSION
   spec.authors = ["Julian Giamblanco"]
   spec.email = ["giamblanco.julian@gmail.com"]
 

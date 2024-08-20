@@ -1,4 +1,4 @@
-# ShipCompliantV1Rb
+# ShipCompliantV1
 
 TODO: Delete this and the text below, and describe your gem
 
