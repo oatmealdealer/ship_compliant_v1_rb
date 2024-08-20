@@ -9,4 +9,13 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
+anyhow = "1.0.86"
+base64 = "0.22.1"
+hyper = "1.4.1"
 magnus = { version = "0.6" }
+# progenitor = "0.7.0"
+progenitor = { path = "../../../progenitor/progenitor" }
+reqwest = "0.12.5"
+serde = "1.0.208"
+serde_magnus = "0.8.1"
+ship_compliant_v1_rs = { path = "../../../ship_compliant_v1_rs" }
