@@ -80,7 +80,6 @@ impl V1Client {
 #[magnus::init]
 fn init(ruby: &Ruby) -> Result<(), Error> {
     let module = ruby.define_module("ShipCompliantV1")?;
-    // let error_class = module.define_error("Error", ruby.exception_standard_error())?;
-
+    V1Client::define_ruby_class(ruby, &module)?;
     Ok(())
 }
