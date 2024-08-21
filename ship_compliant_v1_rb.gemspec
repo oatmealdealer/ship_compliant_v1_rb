@@ -31,7 +31,8 @@ Gem::Specification.new do |spec|
   spec.bindir = "exe"
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
-  spec.extensions = ["ext/ship_compliant_v1_rb/Cargo.toml"]
+  spec.extensions = ["ext/ship_compliant_v1_rb/extconf.rb"]
+  spec.add_dependency "rb_sys", "~> 0.9.91"
 
   # Uncomment to register a new dependency of your gem
   # spec.add_dependency "example-gem", "~> 1.0"
