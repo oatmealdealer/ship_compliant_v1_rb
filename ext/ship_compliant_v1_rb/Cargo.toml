@@ -17,3 +17,4 @@ reqwest = "0.12.5"
 serde = "1.0.208"
 serde_magnus = "0.8.1"
 ship_compliant_v1_rs = { git = "https://github.com/oatmealdealer/ship_compliant_v1_rs.git"}
+smol = "2.0.1"

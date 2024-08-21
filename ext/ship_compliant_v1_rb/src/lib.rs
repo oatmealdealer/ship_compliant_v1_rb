@@ -1,7 +1,6 @@
 use hyper::header::HeaderValue;
-use magnus::{function, method, prelude::*, Error, Ruby};
+use magnus::{function, prelude::*, Error, Ruby};
 use ship_compliant_v1_rs::prelude::Client;
-
 
 // Copied directly from reqwest since they don't yet support setting default basic auth in the ClientBuilder
 pub fn basic_auth<U, P>(username: U, password: Option<P>) -> HeaderValue
@@ -46,16 +45,17 @@ impl V1Client {
             inner: Client::new_with_client(&baseurl, client),
         })
     }
-    pub async fn get_sales_order(
+    pub fn get_sales_order(
         &self,
         ruby: Option<&Ruby>,
         sales_order_key: String,
     ) -> Result<magnus::Value, magnus::Error> {
-        match self
-            .inner
-            .get_sales_orders_sales_order_key(Some(&sales_order_key))
-            .await
-        {
+        let res = smol::block_on(async {
+            self.inner
+                .get_sales_orders_sales_order_key(Some(&sales_order_key))
+                .await
+        });
+        match res {
             Ok(resp) => Ok(serde_magnus::serialize(
                 resp.sales_order
                     .as_ref()
@@ -72,7 +72,7 @@ impl V1Client {
     pub fn define_ruby_class(ruby: &Ruby, module: &magnus::RModule) -> Result<(), magnus::Error> {
         let class = module.define_class("Client", ruby.class_object())?;
         class.define_singleton_method("new", function!(V1Client::new, 3))?;
-        class.define_method("get_sales_order", method!(V1Client::get_sales_order, 1))
+        class.define_method("get_sales_order", magnus::method!(V1Client::get_sales_order, 1))?;
         Ok(())
     }
 }
