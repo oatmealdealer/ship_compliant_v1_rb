@@ -1,5 +1,5 @@
 use hyper::header::HeaderValue;
-use magnus::{function, prelude::*, Error, Ruby};
+use magnus::{function, method, prelude::*, Error, Ruby};
 use ship_compliant_v1_rs::prelude::Client;
 
 
@@ -72,7 +72,7 @@ impl V1Client {
     pub fn define_ruby_class(ruby: &Ruby, module: &magnus::RModule) -> Result<(), magnus::Error> {
         let class = module.define_class("Client", ruby.class_object())?;
         class.define_singleton_method("new", function!(V1Client::new, 3))?;
-
+        class.define_method("get_sales_order", method!(V1Client::get_sales_order, 1))
         Ok(())
     }
 }
