@@ -50,7 +50,8 @@ impl V1Client {
         // ruby: &'r Ruby,
         sales_order_key: String,
     ) -> Result<magnus::Value, magnus::Error> {
-        let res = smol::block_on(async {
+        let rt = tokio::runtime::Runtime::new().expect("couldnt create tokio runtime");
+        let res = rt.block_on(async {
             self.inner
                 .get_sales_orders_sales_order_key(Some(&sales_order_key))
                 .await
