@@ -1,5 +1,5 @@
 use hyper::header::HeaderValue;
-use magnus::{function, prelude::*, Error, Ruby};
+use magnus::{function, prelude::*, Error, Ruby, TryConvert};
 use ship_compliant_v1_rs::prelude::Client;
 
 // Copied directly from reqwest since they don't yet support setting default basic auth in the ClientBuilder
@@ -45,9 +45,9 @@ impl V1Client {
             inner: Client::new_with_client(&baseurl, client),
         })
     }
-    pub fn get_sales_order(
-        &self,
-        ruby: Option<&Ruby>,
+    pub fn get_sales_order<'a, 'r>(
+        &'a self,
+        // ruby: &'r Ruby,
         sales_order_key: String,
     ) -> Result<magnus::Value, magnus::Error> {
         let res = smol::block_on(async {
@@ -55,24 +55,24 @@ impl V1Client {
                 .get_sales_orders_sales_order_key(Some(&sales_order_key))
                 .await
         });
-        match res {
-            Ok(resp) => Ok(serde_magnus::serialize(
-                resp.sales_order
-                    .as_ref()
-                    .expect("missing sales order for successful response"),
-            )
-            .expect("couldn't serialize response")),
-            Err(e) => Err(magnus::Error::new(
-                ruby.expect("must be called from Ruby thread")
-                    .exception_standard_error(),
-                format!("error: {}", e.to_string()),
-            )),
-        }
+        return serde_magnus::serialize(&res.unwrap().sales_order);
+        // match res {
+        //     Ok(resp) => serde_magnus::serialize(&resp.sales_order),
+        //     Err(e) => Err(magnus::Error::new(
+        //         // ruby.expect("must be called from Ruby thread")
+        //         ruby
+        //             .exception_standard_error(),
+        //         format!("error: {}", e.to_string()),
+        //     )),
+        // }
     }
     pub fn define_ruby_class(ruby: &Ruby, module: &magnus::RModule) -> Result<(), magnus::Error> {
         let class = module.define_class("Client", ruby.class_object())?;
         class.define_singleton_method("new", function!(V1Client::new, 3))?;
-        class.define_method("get_sales_order", magnus::method!(V1Client::get_sales_order, 1))?;
+        class.define_method(
+            "get_sales_order",
+            magnus::method!(V1Client::get_sales_order, 1),
+        )?;
         Ok(())
     }
 }

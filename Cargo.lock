@@ -740,9 +740,9 @@ checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 
 [[package]]
 name = "magnus"
-version = "0.6.4"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1597ef40aa8c36be098249e82c9a20cf7199278ac1c1a1a995eeead6a184479"
+checksum = "3d87ae53030f3a22e83879e666cb94e58a7bdf31706878a0ba48752994146dab"
 dependencies = [
  "magnus-macros",
  "rb-sys",
@@ -1252,8 +1252,7 @@ dependencies = [
 [[package]]
 name = "serde_magnus"
 version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76c20da583b5e1016e9199ef5f3260f7a8d1b253307d232600f6b12737262dbd"
+source = "git+https://github.com/oatmealdealer/serde-magnus.git?branch=update-magnus#d5ec045443c507068ad15f47ee3de5261a1efb14"
 dependencies = [
  "magnus",
  "serde",
