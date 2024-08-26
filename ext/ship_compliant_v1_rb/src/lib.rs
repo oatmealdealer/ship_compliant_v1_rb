@@ -50,22 +50,20 @@ impl V1Client {
         // ruby: &'r Ruby,
         sales_order_key: String,
     ) -> Result<magnus::Value, magnus::Error> {
+        let ruby = Ruby::get().expect("called from ruby thread");
         let rt = tokio::runtime::Runtime::new().expect("couldnt create tokio runtime");
         let res = rt.block_on(async {
             self.inner
                 .get_sales_orders_sales_order_key(Some(&sales_order_key))
                 .await
         });
-        return serde_magnus::serialize(&res.unwrap().sales_order);
-        // match res {
-        //     Ok(resp) => serde_magnus::serialize(&resp.sales_order),
-        //     Err(e) => Err(magnus::Error::new(
-        //         // ruby.expect("must be called from Ruby thread")
-        //         ruby
-        //             .exception_standard_error(),
-        //         format!("error: {}", e.to_string()),
-        //     )),
-        // }
+        match res {
+            Ok(resp) => serde_magnus::serialize(&resp.sales_order),
+            Err(e) => Err(magnus::Error::new(
+                ruby.exception_standard_error(),
+                format!("error: {}", e.to_string()),
+            )),
+        }
     }
     pub fn define_ruby_class(ruby: &Ruby, module: &magnus::RModule) -> Result<(), magnus::Error> {
         let class = module.define_class("Client", ruby.class_object())?;

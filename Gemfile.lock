@@ -2,6 +2,7 @@ PATH
   remote: .
   specs:
     ship_compliant_v1_rb (0.1.0)
+      rb_sys (~> 0.9.91)
 
 GEM
   remote: https://rubygems.org/
