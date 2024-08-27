@@ -72,12 +72,18 @@ impl V1Client {
     }
     pub fn get_sales_tax_rates_by_address(
         &self,
-        body: magnus::RHash,
+        input: magnus::RHash,
     ) -> Result<magnus::Value, magnus::Error> {
         self.call(
             self.inner
-                .post_sales_orders_quote_sales_tax_rate(&serde_magnus::deserialize(body)?),
+                .post_sales_orders_quote_sales_tax_rate(&serde_magnus::deserialize(input)?),
         )
+    }
+    pub fn calculate_sales_tax_due_for_order(
+        &self,
+        input: magnus::RHash,
+    ) -> Result<magnus::Value, magnus::Error> {
+        self.call(self.inner.post_sales_orders_quote_sales_tax(&serde_magnus::deserialize(input)?))
     }
     pub fn define_ruby_class(ruby: &Ruby, module: &magnus::RModule) -> Result<(), magnus::Error> {
         let class = module.define_class("Client", ruby.class_object())?;
@@ -89,6 +95,10 @@ impl V1Client {
         class.define_method(
             "get_sales_tax_rates_by_address",
             magnus::method!(V1Client::get_sales_tax_rates_by_address, 1),
+        )?;
+        class.define_method(
+            "calculate_sales_tax_due_for_order",
+            magnus::method!(V1Client::calculate_sales_tax_due_for_order, 1),
         )?;
         Ok(())
     }
