@@ -85,6 +85,13 @@ impl V1Client {
     ) -> Result<magnus::Value, magnus::Error> {
         self.call(self.inner.post_sales_orders_quote_sales_tax(&serde_magnus::deserialize(input)?))
     }
+    pub fn get_sales_order_tracking(&self, sales_order_key: String, shipment_key: Option<magnus::RArray>) -> Result<magnus::Value, magnus::Error> {
+        let shipment_keys: Option<Vec<String>> = match shipment_key {
+            None => None,
+            Some(keys) => Some(keys.to_vec()?)
+        };
+        self.call(self.inner.get_sales_orders_sales_order_key_tracking(&sales_order_key, shipment_keys.as_ref()))
+    }
     pub fn define_ruby_class(ruby: &Ruby, module: &magnus::RModule) -> Result<(), magnus::Error> {
         let class = module.define_class("Client", ruby.class_object())?;
         class.define_singleton_method("new", function!(V1Client::new, 3))?;
@@ -99,6 +106,10 @@ impl V1Client {
         class.define_method(
             "calculate_sales_tax_due_for_order",
             magnus::method!(V1Client::calculate_sales_tax_due_for_order, 1),
+        )?;
+        class.define_method(
+            "get_sales_order_tracking",
+            magnus::method!(V1Client::get_sales_order_tracking, 2),
         )?;
         Ok(())
     }
