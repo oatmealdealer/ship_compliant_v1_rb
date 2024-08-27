@@ -67,7 +67,7 @@ impl V1Client {
     pub fn get_sales_order(&self, sales_order_key: String) -> Result<magnus::Value, magnus::Error> {
         self.call(
             self.inner
-                .get_sales_orders_sales_order_key(Some(&sales_order_key)),
+                .get_sales_orders_sales_order_key(&sales_order_key),
         )
     }
     pub fn get_sales_tax_rates_by_address(
