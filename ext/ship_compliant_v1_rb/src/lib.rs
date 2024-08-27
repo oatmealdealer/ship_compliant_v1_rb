@@ -52,14 +52,14 @@ impl V1Client {
     fn call<F, T, E>(&self, f: F) -> Result<magnus::Value, magnus::Error>
     where
         T: serde::Serialize,
-        E: ToString,
+        E: std::fmt::Display,
         F: std::future::Future<Output = Result<ship_compliant_v1_rs::ResponseValue<T>, E>>,
     {
         let ruby = Ruby::get().expect("called from ruby thread");
         match self.runtime.block_on(f) {
             Err(e) => Err(magnus::Error::new(
                 ruby.exception_standard_error(),
-                format!("error: {}", e.to_string()),
+                format!("error: {}", e),
             )),
             Ok(resp) => serde_magnus::serialize(&resp.into_inner()),
         }
