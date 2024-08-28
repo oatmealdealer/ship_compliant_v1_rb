@@ -36,14 +36,19 @@ where
     transparent,
     rename_all(deserialize = "camelCase", serialize = "snake_case")
 )]
-pub struct Response(serde_json::Value);
+pub struct Response {
+    #[serde(flatten)]
+    inner: serde_json::Value,
+}
 
 impl Response {
     pub fn new<T>(value: T) -> Result<Self, anyhow::Error>
     where
         T: Serialize,
     {
-        Ok(Self(serde_json::to_value(value)?))
+        Ok(Self {
+            inner: serde_json::to_value(value)?,
+        })
     }
 }
 
