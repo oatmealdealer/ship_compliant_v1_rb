@@ -33,7 +33,7 @@ where
 
 #[derive(Serialize, Deserialize)]
 #[serde(
-    transparent,
+    // transparent,
     // rename_all(deserialize = "camelCase", serialize = "snake_case")
     rename_all = "snake_case"
 )]
