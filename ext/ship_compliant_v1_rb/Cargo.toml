@@ -15,6 +15,9 @@
     magnus               = { version = "0.7.1" }
     reqwest              = "0.12.5"
     serde                = "1.0.208"
+    serde-transcode      = "1.1.1"
+    serde_json           = "1.0.127"
     serde_magnus         = { git = "https://github.com/oatmealdealer/serde-magnus.git", branch = "update-magnus" }
     ship_compliant_v1_rs = { git = "https://github.com/oatmealdealer/ship_compliant_v1_rs.git" }
+    thiserror            = "1.0.63"
     tokio                = { version = "1.39.3", features = ["rt-multi-thread"] }

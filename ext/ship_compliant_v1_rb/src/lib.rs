@@ -1,6 +1,8 @@
+use std::ops::Deref;
+
 use hyper::header::HeaderValue;
-use magnus::{function, prelude::*, Error, Ruby};
-use ship_compliant_v1_rs::prelude::Client;
+use magnus::{function, prelude::*, Ruby};
+use ship_compliant_v1_rs::{prelude::Client, ResponseValue};
 
 // Copied directly from reqwest since they don't yet support setting default basic auth in the ClientBuilder
 pub fn basic_auth<U, P>(username: U, password: Option<P>) -> HeaderValue
@@ -24,6 +26,20 @@ where
     header.set_sensitive(true);
     header
 }
+
+// pub struct Response<T>(ResponseValue<T>);
+
+// impl<T: Send> Deref for Response<T> {
+//     type Target = T;
+//     fn deref(&self) -> &Self::Target {
+//         &self.0
+//     }
+// }
+
+// #[derive(thiserror::Error)]
+// pub enum Error {
+
+// }
 
 #[magnus::wrap(class = "ShipCompliantV1::Client", free_immediately, size)]
 pub struct V1Client {
@@ -52,15 +68,28 @@ impl V1Client {
     fn call<F, T, E>(&self, f: F) -> Result<magnus::Value, magnus::Error>
     where
         T: serde::Serialize,
-        E: std::fmt::Display,
-        F: std::future::Future<Output = Result<ship_compliant_v1_rs::ResponseValue<T>, E>>,
+        E: serde::Serialize,
+        ship_compliant_v1_rs::Error<E>: std::fmt::Display,
+        F: std::future::Future<Output = Result<ResponseValue<T>, ship_compliant_v1_rs::Error<E>>>,
     {
+        use ship_compliant_v1_rs::Error;
         let ruby = Ruby::get().expect("called from ruby thread");
         match self.runtime.block_on(f) {
-            Err(e) => Err(magnus::Error::new(
-                ruby.exception_standard_error(),
-                format!("error: {}", e),
-            )),
+            Err(e) => match e {
+                Error::ErrorResponse(resp) => serde_magnus::serialize(&resp.into_inner()),
+                Error::UnexpectedResponse(resp) => {
+                    let bytes = self.runtime.block_on(resp.bytes()).map_err(move |e| {
+                        magnus::Error::new(ruby.exception_standard_error(), format!("error: {}", e))
+                    })?;
+                    let mut deserializer = serde_json::Deserializer::from_slice(&bytes);
+                    let serializer = serde_magnus::Serializer;
+                    Ok(serde_transcode::transcode(&mut deserializer, serializer)?)
+                }
+                _ => Err(magnus::Error::new(
+                    ruby.exception_standard_error(),
+                    format!("error: {}", e),
+                )),
+            },
             Ok(resp) => serde_magnus::serialize(&resp.into_inner()),
         }
     }
@@ -83,14 +112,26 @@ impl V1Client {
         &self,
         input: magnus::RHash,
     ) -> Result<magnus::Value, magnus::Error> {
-        self.call(self.inner.post_sales_orders_quote_sales_tax(&serde_magnus::deserialize(input)?))
+        self.call(
+            self.inner
+                .post_sales_orders_quote_sales_tax(&serde_magnus::deserialize(input)?),
+        )
     }
-    pub fn get_sales_order_tracking(&self, sales_order_key: String, shipment_key: Option<magnus::RArray>) -> Result<magnus::Value, magnus::Error> {
+    pub fn get_sales_order_tracking(
+        &self,
+        sales_order_key: String,
+        shipment_key: Option<magnus::RArray>,
+    ) -> Result<magnus::Value, magnus::Error> {
         let shipment_keys: Option<Vec<String>> = match shipment_key {
             None => None,
-            Some(keys) => Some(keys.to_vec()?)
+            Some(keys) => Some(keys.to_vec()?),
         };
-        self.call(self.inner.get_sales_orders_sales_order_key_tracking(&sales_order_key, shipment_keys.as_ref()))
+        self.call(
+            self.inner.get_sales_orders_sales_order_key_tracking(
+                &sales_order_key,
+                shipment_keys.as_ref(),
+            ),
+        )
     }
     pub fn define_ruby_class(ruby: &Ruby, module: &magnus::RModule) -> Result<(), magnus::Error> {
         let class = module.define_class("Client", ruby.class_object())?;
@@ -116,7 +157,7 @@ impl V1Client {
 }
 
 #[magnus::init]
-fn init(ruby: &Ruby) -> Result<(), Error> {
+fn init(ruby: &Ruby) -> Result<(), magnus::Error> {
     let module = ruby.define_module("ShipCompliantV1")?;
     V1Client::define_ruby_class(ruby, &module)?;
     Ok(())

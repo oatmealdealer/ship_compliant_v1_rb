@@ -1006,6 +1006,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde-transcode"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "590c0e25c2a5bb6e85bf5c1bce768ceb86b316e7a01bdf07d2cb4ec2271990e2"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde_derive"
 version = "1.0.209"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1031,7 +1040,7 @@ dependencies = [
 [[package]]
 name = "serde_magnus"
 version = "0.8.1"
-source = "git+https://github.com/oatmealdealer/serde-magnus.git?branch=update-magnus#d5ec045443c507068ad15f47ee3de5261a1efb14"
+source = "git+https://github.com/oatmealdealer/serde-magnus.git?branch=update-magnus#bf9478fa9c56049e9130b43534cedc6f80147ca8"
 dependencies = [
  "magnus",
  "serde",
@@ -1066,8 +1075,11 @@ dependencies = [
  "magnus",
  "reqwest",
  "serde",
+ "serde-transcode",
+ "serde_json",
  "serde_magnus",
  "ship_compliant_v1_rs",
+ "thiserror",
  "tokio",
 ]
 
@@ -1187,6 +1199,26 @@ dependencies = [
  "once_cell",
  "rustix",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "thiserror"
+version = "1.0.63"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0342370b38b6a11b6cc11d6a805569958d54cfa061a29969c3b5ce2ea405724"
+dependencies = [
+ "thiserror-impl",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "1.0.63"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4558b58466b9ad7ca0f102865eccc95938dca1a74a856f2b57b6629050da261"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
