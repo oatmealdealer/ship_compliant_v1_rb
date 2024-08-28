@@ -34,12 +34,11 @@ where
 #[derive(Serialize, Deserialize)]
 #[serde(
     // transparent,
-    // rename_all(deserialize = "camelCase", serialize = "snake_case")
-    rename_all = "snake_case"
+    rename_all_fields(deserialize = "camelCase", serialize = "snake_case")
+    // rename_all = "snake_case"
 )]
-pub struct Response {
-    #[serde(flatten)]
-    inner: serde_json::Value,
+pub enum Response {
+    Value(serde_json::Value)
 }
 
 impl Response {
@@ -47,9 +46,7 @@ impl Response {
     where
         T: Serialize,
     {
-        Ok(Self {
-            inner: serde_json::to_value(value)?,
-        })
+        Ok(Self::Value(serde_json::to_value(value)?))
     }
 }
 
