@@ -85,6 +85,11 @@ impl V1Client {
                     let serializer = serde_magnus::Serializer;
                     Ok(serde_transcode::transcode(&mut deserializer, serializer)?)
                 }
+                Error::InvalidResponsePayload(bytes, _) => {
+                    let mut deserializer = serde_json::Deserializer::from_slice(&bytes);
+                    let serializer = serde_magnus::Serializer;
+                    Ok(serde_transcode::transcode(&mut deserializer, serializer)?)
+                }
                 _ => Err(magnus::Error::new(
                     ruby.exception_standard_error(),
                     format!("error: {}", e),
