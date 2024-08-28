@@ -1,14 +1,18 @@
-use std::ops::Deref;
+use std::{
+    fmt::{Debug, Display},
+    marker::{Send, Sync},
+};
 
 use hyper::header::HeaderValue;
 use magnus::{function, prelude::*, Ruby};
+use serde::{Deserialize, Serialize};
 use ship_compliant_v1_rs::{prelude::Client, ResponseValue};
 
 // Copied directly from reqwest since they don't yet support setting default basic auth in the ClientBuilder
 pub fn basic_auth<U, P>(username: U, password: Option<P>) -> HeaderValue
 where
-    U: std::fmt::Display,
-    P: std::fmt::Display,
+    U: Display,
+    P: Display,
 {
     use base64::prelude::BASE64_STANDARD;
     use base64::write::EncoderWriter;
@@ -27,19 +31,21 @@ where
     header
 }
 
-// pub struct Response<T>(ResponseValue<T>);
+#[derive(Serialize, Deserialize)]
+#[serde(
+    transparent,
+    rename_all(deserialize = "camelCase", serialize = "snake_case")
+)]
+pub struct Response(serde_json::Value);
 
-// impl<T: Send> Deref for Response<T> {
-//     type Target = T;
-//     fn deref(&self) -> &Self::Target {
-//         &self.0
-//     }
-// }
-
-// #[derive(thiserror::Error)]
-// pub enum Error {
-
-// }
+impl Response {
+    pub fn new<T>(value: T) -> Result<Self, anyhow::Error>
+    where
+        T: Serialize,
+    {
+        Ok(Self(serde_json::to_value(value)?))
+    }
+}
 
 #[magnus::wrap(class = "ShipCompliantV1::Client", free_immediately, size)]
 pub struct V1Client {
@@ -65,37 +71,45 @@ impl V1Client {
             runtime: rt,
         })
     }
-    fn call<F, T, E>(&self, f: F) -> Result<magnus::Value, magnus::Error>
+    fn extract_response<T, E>(
+        &self,
+        result: Result<ResponseValue<T>, ship_compliant_v1_rs::Error<E>>,
+    ) -> Result<Response, anyhow::Error>
     where
-        T: serde::Serialize,
-        E: serde::Serialize,
-        ship_compliant_v1_rs::Error<E>: std::fmt::Display,
-        F: std::future::Future<Output = Result<ResponseValue<T>, ship_compliant_v1_rs::Error<E>>>,
+        T: Serialize,
+        E: Serialize + Debug + Send + Sync + 'static,
+        ship_compliant_v1_rs::Error<E>: Display + Debug,
     {
         use ship_compliant_v1_rs::Error;
-        let ruby = Ruby::get().expect("called from ruby thread");
-        match self.runtime.block_on(f) {
+        match result {
             Err(e) => match e {
-                Error::ErrorResponse(resp) => serde_magnus::serialize(&resp.into_inner()),
+                Error::ErrorResponse(resp) => Ok(Response::new(resp.into_inner())?),
                 Error::UnexpectedResponse(resp) => {
-                    let bytes = self.runtime.block_on(resp.bytes()).map_err(move |e| {
-                        magnus::Error::new(ruby.exception_standard_error(), format!("error: {}", e))
-                    })?;
-                    let mut deserializer = serde_json::Deserializer::from_slice(&bytes);
-                    let serializer = serde_magnus::Serializer;
-                    Ok(serde_transcode::transcode(&mut deserializer, serializer)?)
+                    let bytes = self.runtime.block_on(resp.bytes())?;
+                    Ok(serde_json::from_slice::<Response>(&bytes)?)
                 }
                 Error::InvalidResponsePayload(bytes, _) => {
-                    let mut deserializer = serde_json::Deserializer::from_slice(&bytes);
-                    let serializer = serde_magnus::Serializer;
-                    Ok(serde_transcode::transcode(&mut deserializer, serializer)?)
+                    Ok(serde_json::from_slice::<Response>(&bytes)?)
                 }
-                _ => Err(magnus::Error::new(
-                    ruby.exception_standard_error(),
-                    format!("error: {}", e),
-                )),
+                _ => Err(e.into()),
             },
-            Ok(resp) => serde_magnus::serialize(&resp.into_inner()),
+            Ok(resp) => Ok(Response::new(resp.into_inner())?),
+        }
+    }
+    fn call<F, T, E>(&self, f: F) -> Result<magnus::Value, magnus::Error>
+    where
+        T: Serialize,
+        E: Serialize + Debug + Send + Sync + 'static,
+        ship_compliant_v1_rs::Error<E>: Display + Debug,
+        F: std::future::Future<Output = Result<ResponseValue<T>, ship_compliant_v1_rs::Error<E>>>,
+    {
+        let ruby = Ruby::get().expect("called from ruby thread");
+        match self.extract_response(self.runtime.block_on(f)) {
+            Err(e) => Err(magnus::Error::new(
+                ruby.exception_standard_error(),
+                format!("error: {}", e),
+            )),
+            Ok(resp) => serde_magnus::serialize(&resp),
         }
     }
     pub fn get_sales_order(&self, sales_order_key: String) -> Result<magnus::Value, magnus::Error> {
