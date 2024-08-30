@@ -109,10 +109,9 @@ impl V1Client {
                 let block = ruby.proc_new(|_, values, _| -> StaticSymbol {
                     let key = values.get(0).unwrap();
                     StaticSymbol::new(
-                        RString::from_value(*key)
-                            .or_else(move || {
-                                StaticSymbol::from_value(*key).map(|sym| sym.to_r_string().unwrap())
-                            })
+                        StaticSymbol::from_value(*key)
+                            .map(|sym| sym.to_r_string().unwrap())
+                            .or_else(move || RString::from_value(*key))
                             .unwrap()
                             .to_string()
                             .unwrap()
