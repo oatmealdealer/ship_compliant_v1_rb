@@ -107,15 +107,14 @@ impl V1Client {
                 let ruby_hash =
                     magnus::RHash::from_value(resp).expect("response must serialize to Hash");
                 let block = ruby.proc_new(|_, values, _| -> StaticSymbol {
-                    let key = values.get(0).unwrap();
                     StaticSymbol::new(
-                        StaticSymbol::from_value(*key)
-                            .map(|sym| sym.to_r_string().unwrap())
-                            .or_else(move || RString::from_value(*key))
-                            .unwrap()
-                            .to_string()
-                            .unwrap()
-                            .to_snake_case(),
+                        RString::from_value(
+                            values.get(0).unwrap().funcall_public("to_s", ()).unwrap(),
+                        )
+                        .unwrap()
+                        .to_string()
+                        .unwrap()
+                        .to_snake_case(),
                     )
                 });
                 ruby_hash.funcall_with_block::<_, _, StaticSymbol>(
