@@ -106,21 +106,21 @@ impl V1Client {
             Ok(resp) => {
                 let ruby_hash =
                     magnus::RHash::from_value(resp).expect("response must serialize to Hash");
-                let block = ruby.proc_new(|_, values, _| -> StaticSymbol {
-                    StaticSymbol::new(
-                        RString::from_value(
-                            values.get(0).unwrap().funcall_public("to_s", ()).unwrap(),
-                        )
-                        .unwrap()
-                        .to_string()
-                        .unwrap()
-                        .to_snake_case(),
-                    )
-                });
-                ruby_hash.funcall_with_block::<_, _, StaticSymbol>(
+
+                ruby_hash.block_call::<_, _, magnus::StaticSymbol, magnus::RHash>(
                     "deep_transform_keys!",
                     (),
-                    block,
+                    |_, values, _| -> StaticSymbol {
+                        StaticSymbol::new(
+                            RString::from_value(
+                                values.get(0).unwrap().funcall_public("to_s", ()).unwrap(),
+                            )
+                            .unwrap()
+                            .to_string()
+                            .unwrap()
+                            .to_snake_case(),
+                        )
+                    },
                 )?;
                 Ok(ruby_hash.as_value())
             }
