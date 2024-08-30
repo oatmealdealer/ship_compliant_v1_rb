@@ -8,6 +8,44 @@ use std::{
     marker::{Send, Sync},
 };
 
+pub fn snake_case_hash_keys_mut(resp: &magnus::Value) -> Result<magnus::Value, magnus::Error> {
+    let ruby_hash = magnus::RHash::from_value(*resp).expect("expected Hash");
+
+    ruby_hash.block_call::<_, _, magnus::StaticSymbol, magnus::RHash>(
+        "deep_transform_keys!",
+        (),
+        |_, values, _| -> StaticSymbol {
+            StaticSymbol::new(
+                RString::from_value(values.get(0).unwrap().funcall_public("to_s", ()).unwrap())
+                    .unwrap()
+                    .to_string()
+                    .unwrap()
+                    .to_snake_case(),
+            )
+        },
+    )?;
+    Ok(ruby_hash.as_value())
+}
+
+pub fn camel_case_hash_keys(resp: &magnus::Value) -> Result<magnus::Value, magnus::Error> {
+    let mut ruby_hash = magnus::RHash::from_value(*resp).expect("expected Hash");
+
+    ruby_hash = ruby_hash.block_call::<_, _, magnus::StaticSymbol, magnus::RHash>(
+        "deep_transform_keys",
+        (),
+        |_, values, _| -> StaticSymbol {
+            StaticSymbol::new(
+                RString::from_value(values.get(0).unwrap().funcall_public("to_s", ()).unwrap())
+                    .unwrap()
+                    .to_string()
+                    .unwrap()
+                    .to_camel_case(),
+            )
+        },
+    )?;
+    Ok(ruby_hash.as_value())
+}
+
 // Copied directly from reqwest since they don't yet support setting default basic auth in the ClientBuilder
 pub fn basic_auth<U, P>(username: U, password: Option<P>) -> HeaderValue
 where
@@ -103,27 +141,7 @@ impl V1Client {
                 ruby.exception_standard_error(),
                 format!("error: {}", e),
             )),
-            Ok(resp) => {
-                let ruby_hash =
-                    magnus::RHash::from_value(resp).expect("response must serialize to Hash");
-
-                ruby_hash.block_call::<_, _, magnus::StaticSymbol, magnus::RHash>(
-                    "deep_transform_keys!",
-                    (),
-                    |_, values, _| -> StaticSymbol {
-                        StaticSymbol::new(
-                            RString::from_value(
-                                values.get(0).unwrap().funcall_public("to_s", ()).unwrap(),
-                            )
-                            .unwrap()
-                            .to_string()
-                            .unwrap()
-                            .to_snake_case(),
-                        )
-                    },
-                )?;
-                Ok(ruby_hash.as_value())
-            }
+            Ok(resp) => snake_case_hash_keys_mut(&resp),
         }
     }
     pub fn get_sales_order(&self, sales_order_key: String) -> Result<magnus::Value, magnus::Error> {
@@ -132,13 +150,26 @@ impl V1Client {
                 .get_sales_orders_sales_order_key(&sales_order_key),
         )
     }
+    pub fn persist_sales_order(
+        &self,
+        input: magnus::RHash,
+    ) -> Result<magnus::Value, magnus::Error> {
+        self.call(
+            self.inner
+                .post_sales_orders(&serde_magnus::deserialize(camel_case_hash_keys(
+                    &input.as_value(),
+                )?)?),
+        )
+    }
     pub fn get_sales_tax_rates_by_address(
         &self,
         input: magnus::RHash,
     ) -> Result<magnus::Value, magnus::Error> {
         self.call(
             self.inner
-                .post_sales_orders_quote_sales_tax_rate(&serde_magnus::deserialize(input)?),
+                .post_sales_orders_quote_sales_tax_rate(&serde_magnus::deserialize(
+                    camel_case_hash_keys(&input.as_value())?,
+                )?),
         )
     }
     pub fn calculate_sales_tax_due_for_order(
@@ -147,7 +178,9 @@ impl V1Client {
     ) -> Result<magnus::Value, magnus::Error> {
         self.call(
             self.inner
-                .post_sales_orders_quote_sales_tax(&serde_magnus::deserialize(input)?),
+                .post_sales_orders_quote_sales_tax(&serde_magnus::deserialize(
+                    camel_case_hash_keys(&input.as_value())?,
+                )?),
         )
     }
     pub fn get_sales_order_tracking(
@@ -172,6 +205,10 @@ impl V1Client {
         class.define_method(
             "get_sales_order",
             magnus::method!(V1Client::get_sales_order, 1),
+        )?;
+        class.define_method(
+            "persist_sales_order",
+            magnus::method!(V1Client::persist_sales_order, 1),
         )?;
         class.define_method(
             "get_sales_tax_rates_by_address",
