@@ -61,7 +61,7 @@ impl V1Client {
     ) -> Result<magnus::Value, magnus::Error>
     where
         T: Serialize,
-        E: Serialize + Debug + Send + Sync + 'static,
+        E: Serialize + Debug + Send + Sync,
         ship_compliant_v1_rs::Error<E>: Display + Debug,
     {
         use ship_compliant_v1_rs::Error;
