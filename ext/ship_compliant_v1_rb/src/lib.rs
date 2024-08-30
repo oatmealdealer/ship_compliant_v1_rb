@@ -1,12 +1,12 @@
+use hyper::header::HeaderValue;
+use inflections::Inflect;
+use magnus::{function, prelude::*, RString, Ruby, StaticSymbol};
+use serde::Serialize;
+use ship_compliant_v1_rs::{prelude::Client, ResponseValue};
 use std::{
     fmt::{Debug, Display},
     marker::{Send, Sync},
 };
-
-use hyper::header::HeaderValue;
-use magnus::{function, prelude::*, Ruby};
-use serde::{Deserialize, Serialize};
-use ship_compliant_v1_rs::{prelude::Client, ResponseValue};
 
 // Copied directly from reqwest since they don't yet support setting default basic auth in the ClientBuilder
 pub fn basic_auth<U, P>(username: U, password: Option<P>) -> HeaderValue
@@ -29,25 +29,6 @@ where
     let mut header = HeaderValue::from_bytes(&buf).expect("base64 is always valid HeaderValue");
     header.set_sensitive(true);
     header
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(
-    // transparent,
-    rename_all_fields(deserialize = "camelCase", serialize = "snake_case")
-    // rename_all = "snake_case"
-)]
-pub enum Response {
-    Value(serde_json::Value)
-}
-
-impl Response {
-    pub fn new<T>(value: T) -> Result<Self, anyhow::Error>
-    where
-        T: Serialize,
-    {
-        Ok(Self::Value(serde_json::to_value(value)?))
-    }
 }
 
 #[magnus::wrap(class = "ShipCompliantV1::Client", free_immediately, size)]
@@ -77,26 +58,36 @@ impl V1Client {
     fn extract_response<T, E>(
         &self,
         result: Result<ResponseValue<T>, ship_compliant_v1_rs::Error<E>>,
-    ) -> Result<Response, anyhow::Error>
+    ) -> Result<magnus::Value, magnus::Error>
     where
         T: Serialize,
         E: Serialize + Debug + Send + Sync + 'static,
         ship_compliant_v1_rs::Error<E>: Display + Debug,
     {
         use ship_compliant_v1_rs::Error;
+        let ruby = Ruby::get().expect("called from ruby thread");
         match result {
             Err(e) => match e {
-                Error::ErrorResponse(resp) => Ok(Response::new(resp.into_inner())?),
+                Error::ErrorResponse(resp) => serde_magnus::serialize(&resp.into_inner()),
                 Error::UnexpectedResponse(resp) => {
-                    let bytes = self.runtime.block_on(resp.bytes())?;
-                    Ok(serde_json::from_slice::<Response>(&bytes)?)
+                    let bytes = self.runtime.block_on(resp.bytes()).map_err(move |e| {
+                        magnus::Error::new(ruby.exception_standard_error(), format!("error: {}", e))
+                    })?;
+                    let mut deserializer = serde_json::Deserializer::from_slice(&bytes);
+                    let serializer = serde_magnus::Serializer;
+                    Ok(serde_transcode::transcode(&mut deserializer, serializer)?)
                 }
                 Error::InvalidResponsePayload(bytes, _) => {
-                    Ok(serde_json::from_slice::<Response>(&bytes)?)
+                    let mut deserializer = serde_json::Deserializer::from_slice(&bytes);
+                    let serializer = serde_magnus::Serializer;
+                    Ok(serde_transcode::transcode(&mut deserializer, serializer)?)
                 }
-                _ => Err(e.into()),
+                _ => Err(magnus::Error::new(
+                    ruby.exception_standard_error(),
+                    format!("error: {}", e),
+                )),
             },
-            Ok(resp) => Ok(Response::new(resp.into_inner())?),
+            Ok(resp) => serde_magnus::serialize(&resp.into_inner()),
         }
     }
     fn call<F, T, E>(&self, f: F) -> Result<magnus::Value, magnus::Error>
@@ -112,7 +103,29 @@ impl V1Client {
                 ruby.exception_standard_error(),
                 format!("error: {}", e),
             )),
-            Ok(resp) => serde_magnus::serialize(&resp),
+            Ok(resp) => {
+                let ruby_hash =
+                    magnus::RHash::from_value(resp).expect("response must serialize to Hash");
+                let block = ruby.proc_new(|_, values, _| -> StaticSymbol {
+                    let key = values.get(0).unwrap();
+                    StaticSymbol::new(
+                        RString::from_value(*key)
+                            .or_else(move || {
+                                StaticSymbol::from_value(*key).map(|sym| sym.to_r_string().unwrap())
+                            })
+                            .unwrap()
+                            .to_string()
+                            .unwrap()
+                            .to_snake_case(),
+                    )
+                });
+                ruby_hash.funcall_with_block::<_, _, StaticSymbol>(
+                    "deep_transform_keys!",
+                    (),
+                    block,
+                )?;
+                Ok(ruby_hash.as_value())
+            }
         }
     }
     pub fn get_sales_order(&self, sales_order_key: String) -> Result<magnus::Value, magnus::Error> {

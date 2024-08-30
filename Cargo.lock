@@ -480,6 +480,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "inflections"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a257582fdcde896fd96463bf2d40eefea0580021c0712a0e2b028b60b47a837a"
+
+[[package]]
 name = "ipnet"
 version = "2.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1072,6 +1078,7 @@ dependencies = [
  "anyhow",
  "base64",
  "hyper",
+ "inflections",
  "magnus",
  "reqwest",
  "serde",
