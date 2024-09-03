@@ -150,6 +150,25 @@ impl V1Client {
                 .get_sales_orders_sales_order_key(&sales_order_key),
         )
     }
+    pub fn check_compliance_of_sales_order(
+        &self,
+        input: magnus::RHash,
+    ) -> Result<magnus::Value, magnus::Error> {
+        self.call(
+            self.inner
+                .post_sales_orders_check_compliance(&serde_magnus::deserialize(
+                    camel_case_hash_keys(&input.as_value())?,
+                )?),
+        )
+    }
+    pub fn commit_sales_order(&self, input: magnus::RHash) -> Result<magnus::Value, magnus::Error> {
+        self.call(
+            self.inner
+                .post_sales_orders_commit(&serde_magnus::deserialize(camel_case_hash_keys(
+                    &input.as_value(),
+                )?)?),
+        )
+    }
     pub fn persist_sales_order(
         &self,
         input: magnus::RHash,
@@ -205,6 +224,14 @@ impl V1Client {
         class.define_method(
             "get_sales_order",
             magnus::method!(V1Client::get_sales_order, 1),
+        )?;
+        class.define_method(
+            "check_compliance_of_sales_order",
+            magnus::method!(V1Client::check_compliance_of_sales_order, 1),
+        )?;
+        class.define_method(
+            "commit_sales_order",
+            magnus::method!(V1Client::commit_sales_order, 1),
         )?;
         class.define_method(
             "persist_sales_order",
