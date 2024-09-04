@@ -197,6 +197,14 @@ impl V1Client {
                 )?)?),
         )
     }
+    pub fn add_update_brand(&self, input: magnus::RHash) -> Result<magnus::Value, magnus::Error> {
+        self.call(
+            self.inner
+                .post_brands(&serde_magnus::deserialize(camel_case_hash_keys(
+                    &input.as_value(),
+                )?)?),
+        )
+    }
     pub fn get_sales_tax_rates_by_address(
         &self,
         input: magnus::RHash,
@@ -261,6 +269,10 @@ impl V1Client {
         class.define_method(
             "add_update_product",
             magnus::method!(V1Client::add_update_product, 1),
+        )?;
+        class.define_method(
+            "add_update_brand",
+            magnus::method!(V1Client::add_update_brand, 1),
         )?;
         class.define_method(
             "get_sales_tax_rates_by_address",
