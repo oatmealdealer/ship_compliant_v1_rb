@@ -150,6 +150,15 @@ impl V1Client {
                 .get_sales_orders_sales_order_key(&sales_order_key),
         )
     }
+    pub fn void_sales_order(
+        &self,
+        sales_order_key: String,
+    ) -> Result<magnus::Value, magnus::Error> {
+        self.call(
+            self.inner
+                .delete_sales_orders_sales_order_key(&sales_order_key),
+        )
+    }
     pub fn check_compliance_of_sales_order(
         &self,
         input: magnus::RHash,
@@ -176,6 +185,14 @@ impl V1Client {
         self.call(
             self.inner
                 .post_sales_orders(&serde_magnus::deserialize(camel_case_hash_keys(
+                    &input.as_value(),
+                )?)?),
+        )
+    }
+    pub fn add_update_product(&self, input: magnus::RHash) -> Result<magnus::Value, magnus::Error> {
+        self.call(
+            self.inner
+                .post_products(&serde_magnus::deserialize(camel_case_hash_keys(
                     &input.as_value(),
                 )?)?),
         )
@@ -236,6 +253,14 @@ impl V1Client {
         class.define_method(
             "persist_sales_order",
             magnus::method!(V1Client::persist_sales_order, 1),
+        )?;
+        class.define_method(
+            "void_sales_order",
+            magnus::method!(V1Client::void_sales_order, 1),
+        )?;
+        class.define_method(
+            "add_update_product",
+            magnus::method!(V1Client::add_update_product, 1),
         )?;
         class.define_method(
             "get_sales_tax_rates_by_address",
